@@ -28,6 +28,21 @@ services:
     env_file:
       - ./hadoop.env
   
+
+  # datanode2:
+  #   image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+  #   platform: linux/amd64
+  #   container_name: datanode2
+  #   restart: always
+  #   ports:
+  #     - 9865:9865
+  #   volumes:
+  #     - hadoop_datanode2:/hadoop/dfs/data
+  #   environment:
+  #     SERVICE_PRECONDITION: "namenode:9870"
+  #   env_file:
+  #     - ./hadoop.env
+  
   resourcemanager:
     image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
     platform: linux/amd64
