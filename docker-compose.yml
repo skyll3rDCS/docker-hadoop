@@ -27,7 +27,22 @@ services:
       SERVICE_PRECONDITION: "namenode:9870"
     env_file:
       - ./hadoop.env
-  
+  hue:
+    image: gethue/hue:4.8.0
+    platform: linux/amd64
+    ports:
+      - 8888:8888
+    environment:
+      - HUE_DATABASE_ENGINE=sqlite3
+      - HUE_DATABASE_NAME=/hue/desktop/desktop.db
+      - HUE_DATABASE_USER=hue
+      - HUE_DATABASE_PASSWORD=hue
+      - POLARS_SKIP_CPU_CHECK=1
+    depends_on:
+      - namenode
+      - resourcemanager
+    env_file:
+      - ./hadoop.env
 
   # datanode2:
   #   image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
@@ -80,9 +95,8 @@ services:
       - hadoop_historyserver:/hadoop/yarn/timeline
     env_file:
       - ./hadoop.env
-  
+
 volumes:
   hadoop_namenode:
   hadoop_datanode:
   hadoop_historyserver:
-  
