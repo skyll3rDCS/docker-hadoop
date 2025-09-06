@@ -1,4 +1,18 @@
 services:
+  zookeeper:
+    image: zookeeper:3.7
+    platform: linux/amd64
+    container_name: zookeeper
+    restart: always
+    ports:
+      - 2181:2181
+    environment:
+      - ZOO_CLIENT_PORT=2181
+      - ZOO_TICK_TIME=2000
+    volumes:
+      - zookeeper_data:/data
+      - zookeeper_datalog:/datalog
+
   namenode:
     image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
     platform: linux/amd64
@@ -11,8 +25,11 @@ services:
       - hadoop_namenode:/hadoop/dfs/name
     environment:
       - CLUSTER_NAME=test
+      - HADOOP_ZOOKEEPER_QUORUM=zookeeper:2181
     env_file:
       - ./hadoop.env
+    depends_on:
+      - zookeeper
 
   datanode:
     image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
@@ -24,40 +41,14 @@ services:
     volumes:
       - hadoop_datanode:/hadoop/dfs/data
     environment:
-      SERVICE_PRECONDITION: "namenode:9870"
+      - SERVICE_PRECONDITION=namenode:9870
+      - HADOOP_ZOOKEEPER_QUORUM=zookeeper:2181
     env_file:
       - ./hadoop.env
-  hue:
-    image: gethue/hue:4.8.0
-    platform: linux/amd64
-    ports:
-      - 8888:8888
-    environment:
-      - HUE_DATABASE_ENGINE=sqlite3
-      - HUE_DATABASE_NAME=/hue/desktop/desktop.db
-      - HUE_DATABASE_USER=hue
-      - HUE_DATABASE_PASSWORD=hue
-      - POLARS_SKIP_CPU_CHECK=1
     depends_on:
       - namenode
-      - resourcemanager
-    env_file:
-      - ./hadoop.env
+      - zookeeper
 
-  # datanode2:
-  #   image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
-  #   platform: linux/amd64
-  #   container_name: datanode2
-  #   restart: always
-  #   ports:
-  #     - 9865:9865
-  #   volumes:
-  #     - hadoop_datanode2:/hadoop/dfs/data
-  #   environment:
-  #     SERVICE_PRECONDITION: "namenode:9870"
-  #   env_file:
-  #     - ./hadoop.env
-  
   resourcemanager:
     image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
     platform: linux/amd64
@@ -66,9 +57,14 @@ services:
     ports:
       - 8088:8088
     environment:
-      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864"
+      - SERVICE_PRECONDITION=namenode:9000,namenode:9870,datanode:9864
+      - HADOOP_ZOOKEEPER_QUORUM=zookeeper:2181
     env_file:
       - ./hadoop.env
+    depends_on:
+      - namenode
+      - datanode
+      - zookeeper
 
   nodemanager1:
     image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
@@ -78,10 +74,16 @@ services:
     ports:
       - 8042:8042
     environment:
-      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
+      - SERVICE_PRECONDITION=namenode:9000,namenode:9870,datanode:9864,resourcemanager:8088
+      - HADOOP_ZOOKEEPER_QUORUM=zookeeper:2181
     env_file:
       - ./hadoop.env
-  
+    depends_on:
+      - resourcemanager
+      - namenode
+      - datanode
+      - zookeeper
+
   historyserver:
     image: bde2020/hadoop-historyserver:2.0.0-hadoop3.2.1-java8
     platform: linux/amd64
@@ -89,14 +91,43 @@ services:
     restart: always
     ports:
       - 8188:8188
-    environment:
-      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
     volumes:
       - hadoop_historyserver:/hadoop/yarn/timeline
+    environment:
+      - SERVICE_PRECONDITION=namenode:9000,namenode:9870,datanode:9864,resourcemanager:8088
+      - HADOOP_ZOOKEEPER_QUORUM=zookeeper:2181
     env_file:
       - ./hadoop.env
+    depends_on:
+      - namenode
+      - datanode
+      - resourcemanager
+      - zookeeper
+
+  hue:
+    image: gethue/hue:4.8.0
+    platform: linux/amd64
+    container_name: hue
+    restart: always
+    ports:
+      - 8888:8888
+    environment:
+      - HUE_DATABASE_ENGINE=sqlite3
+      - HUE_DATABASE_NAME=/hue/desktop/desktop.db
+      - HUE_DATABASE_USER=hue
+      - HUE_DATABASE_PASSWORD=hue
+      - POLARS_SKIP_CPU_CHECK=1
+      - HADOOP_ZOOKEEPER_QUORUM=zookeeper:2181
+    env_file:
+      - ./hadoop.env
+    depends_on:
+      - namenode
+      - resourcemanager
+      - zookeeper
 
 volumes:
   hadoop_namenode:
   hadoop_datanode:
   hadoop_historyserver:
+  zookeeper_data:
+  zookeeper_datalog:
