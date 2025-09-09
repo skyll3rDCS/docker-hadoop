@@ -30,7 +30,24 @@ services:
       - ./hadoop.env
     depends_on:
       - zookeeper
-
+  
+  secondarynamenode:
+    build: ./secondarynamenode
+    platform: linux/amd64
+    container_name: secondarynamenode
+    restart: always
+    ports:
+      - 9868:9868
+    volumes:
+      - hadoop_secondarynamenode:/hadoop/dfs/namesecondary
+    environment:
+      - SERVICE_PRECONDITION=namenode:9870
+      - HADOOP_ZOOKEEPER_QUORUM=zookeeper:2181
+    env_file:
+      - ./hadoop.env
+    depends_on:
+      - namenode
+      - zookeeper
   datanode:
     image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
     platform: linux/amd64
@@ -131,3 +148,4 @@ volumes:
   hadoop_historyserver:
   zookeeper_data:
   zookeeper_datalog:
+  hadoop_secondarynamenode:
